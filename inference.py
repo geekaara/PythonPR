@@ -62,26 +62,25 @@ def constructBayesNet(gameState: hunters.GameState):
     variableDomainsDict = {}
 
     "*** YOUR CODE HERE ***"
-    # Step 1: Populate variables
-    variables = [PAC, GHOST0, GHOST1, OBS0, OBS1]
+    variables = [PAC, GHOST0, GHOST1, OBS0, OBS1]  # variable names
+    # edges are tuples representating edges in bayes n/w
+    edges = [(GHOST0, OBS0), (PAC, OBS0), (PAC, OBS1), (GHOST1, OBS1)]
 
-    # Step 2: Populate edges
-    # Direct edges from Pacman to Observations
-    edges = [(PAC, OBS0), (PAC, OBS1)]
+    # possible position ranges for both agents
+    possiblePositions = []
+    for i in range(X_RANGE):
+        for j in range(Y_RANGE):
+            possiblePositions.append((i, j))
 
-    # Step 3: Set variable domains
-    # All possible positions for Pacman and Ghosts
-    all_positions = [(x, y) for x in range(X_RANGE)
-                     for y in range(Y_RANGE) if not gameState.getWalls()[x][y]]
-
-    # All possible observed distances, considering the noise
-    noisy_distances = [d for d in range(0, MAX_NOISE * 2 + 1)]
-
-    variableDomainsDict[PAC] = all_positions
-    variableDomainsDict[GHOST0] = all_positions
-    variableDomainsDict[GHOST1] = all_positions
-    variableDomainsDict[OBS0] = noisy_distances
-    variableDomainsDict[OBS1] = noisy_distances
+    # Setting domain ranges
+    variableDomainsDict[PAC] = possiblePositions
+    variableDomainsDict[GHOST0] = possiblePositions
+    variableDomainsDict[GHOST1] = possiblePositions
+    # All possibilities of observed distances
+    variableDomainsDict[OBS0] = [
+        i for i in range(X_RANGE + Y_RANGE + MAX_NOISE - 1)]
+    variableDomainsDict[OBS1] = [
+        i for i in range(X_RANGE + Y_RANGE + MAX_NOISE - 1)]
 
     "*** END YOUR CODE HERE ***"
 
@@ -209,7 +208,20 @@ def inferenceByVariableEliminationWithCallTracking(callTrackingList=None):
             eliminationOrder = sorted(list(eliminationVariables))
 
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        # We need to first get all CPT from Bayes Net
+        cpt = bayesNet.getAllCPTsWithEvidence(evidenceDict)
+
+        for variable in eliminationOrder:
+            join_result = joinFactorsByVariable(cpt, variable)
+            if len(join_result[1].unconditionedVariables()) == 1:
+                cpt = join_result[0]
+                continue
+            elim_result = eliminate(join_result[1], variable)
+            cpt = join_result[0] + [elim_result]
+
+        result_factor = joinFactors(cpt)
+        result_factor = normalize(result_factor)
+        return result_factor
         "*** END YOUR CODE HERE ***"
 
     return inferenceByVariableElimination
